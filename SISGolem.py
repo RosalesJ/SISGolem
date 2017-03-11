@@ -149,8 +149,8 @@ def parse_item(item):
 def output(classes, display_array):
     '''Writes classes in a pretty box given a list of classes and the display array'''
     width =  sum(display_array) + 3*len([x for x in display_array if x]) - 1
-    print('-'*width)
     if classes:
+        print('-'*width)
         open_classes = [x for x in classes if x[0] == "Open"]
         format_line(['Status', 'Name', 'Title', 'Cat #', 'Times', 'Room',
                         'Instructor', 'Dates', 'Enr Cap', 'Enr Tot'], display_array)
@@ -166,7 +166,7 @@ def output(classes, display_array):
         print("Total Results: " + str(len(classes)))
         print("Total Closed: " + str(len(classes) - len(open_classes)))
         print("Total Open: " + str(len(open_classes)))
-    print('-'*width)
+        print('-'*width)
 
 
 def format_line(line, display_array):
