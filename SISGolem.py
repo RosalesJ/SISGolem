@@ -38,9 +38,8 @@ def login(session, auth):
         'institution': 'CASE1'
     }
     response = session.post(login_page, data=payload)
-
     try:
-        if "Your User ID and/or Password are invalid" in response:
+        if "incorrect" in response.text:
             log('Wrong username or password')
             return False
     except Exception as e:
@@ -61,8 +60,7 @@ def search_classes(session, auth, course_subject='', catalog_number='', title_ke
         response = session.get(search_page)
         if not logged_in(response.text):
             if not login(session, auth):
-                log("Login error")
-                return []
+                raise Exception("Login Error")
             else:
                 log("Logged into SIS")
 
@@ -204,16 +202,20 @@ def check_classes(session, auth, class_list):
     '''
     subjects = {cls[:4] : [y[5:] for y in class_list if y[:4] == cls[:4]] for cls in class_list}
     available_classes = []
-    for subject in subjects:
-        log('Looking for ' + subject)
-        classes = search_classes(session, authentication, course_subject=subject)
-        if not classes:
-            log('No results')
-        else:
-            for cls in classes:
-                if cls[1] in class_list:
-                    #log('Available class: ' + cls[1])
-                    available_classes.append(cls)
+    try:
+        for subject in subjects:
+            log('Looking for ' + subject)
+            classes = search_classes(session, authentication, course_subject=subject)
+            if not classes:
+                log('No results')
+            else:
+                for cls in classes:
+                    if cls[1] in class_list:
+                        #log('Available class: ' + cls[1])
+                        available_classes.append(cls)
+    except Exception as e:
+        log(str(e))
+        return []
     return available_classes
 
 
