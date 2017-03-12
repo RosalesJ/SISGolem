@@ -12,10 +12,15 @@ from collections import OrderedDict
 classes_file = '/Users/cobyrosales/Documents/School/Classes.csv'
 login_page =  'https://sismobile.case.edu/app/profile/logintoapp'
 search_page = "https://sis.case.edu/psc/P90SCWR_1/EMPLOYEE/P90SCWR/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL"
-authentication = ('Username', 'Password')
+authentication = ('CaseID', 'Password')
 
-#[Status, Name, Title, Catalog Number, Times, Room, Instructor, Dates, Cap, Enrolled]
-display_array = [6, 9, 20, 0, 20, 0, 10, 0, 0, 0]
+#[term, status, name, title, class #, times, room, prof, dates, enrl cap, enrl tot]
+display_array = [0, 6, 9, 20, 0, 20, 0, 0, 0, 0, 0]
+# $TERM of $YEAR is called as term_codes[$TERM][$YEAR - 2008]
+term_codes = {'Fall'  :[2088, 2098, 2108, 2118, 2128, 2138, 2148, 2158, 2168, 2178],
+              'Spring':[0000, 2091, 2101, 2111, 2121, 2131, 2141, 2151, 2161, 2171],
+              'Summer':[2086, 2096, 2106, 2116, 2126, 2136, 2146, 2156, 2166, 2176]
+              }
 seconds_between_requests = 20
 
 def log(event):
@@ -50,11 +55,12 @@ def login(session, auth):
     return True
 
 
-def search_classes(session, auth, course_subject='', catalog_number='', title_keyword=''):
+def search_classes(session, auth, course_subject='', catalog_number='', title_keyword='', term=''):
     '''
     Searches for classes given some criteria.
     Logs user in if not already logged in.
     Returns list of classes if everything works, otherwise returns empty list.
+    term should be in the form "Fall 2018" for years from 2008 - 2017 and Fall, Summer, Spring
     '''
     try:
         response = session.get(search_page)
@@ -69,7 +75,8 @@ def search_classes(session, auth, course_subject='', catalog_number='', title_ke
         query = {
             "course_subject": course_subject,
             "catalog_number": catalog_number,
-            "title_keyword": title_keyword
+            "title_keyword": title_keyword,
+            "term":term_codes[term.split()[0]][int(term.split()[1]) - 2008] if term else ''
             }
         response = query_page(session, query)
         if response:
@@ -89,6 +96,7 @@ def query_page(session, query):
     '''
     payload = {
         'ICAction':'CLASS_SRCH_WRK2_SSR_PB_CLASS_SRCH',
+        'CLASS_SRCH_WRK2_STRM$35$':query['term'],
         'SSR_CLSRCH_WRK_SUBJECT$0':query["course_subject"],
         'SSR_CLSRCH_WRK_CATALOG_NBR$1':query['catalog_number'],
         'SSR_CLSRCH_WRK_DESCR$10':query['title_keyword']
@@ -104,15 +112,18 @@ def parse_page(page):
     Parses raw XML response page.
     Returns list of classes if the page is parsable.
     Otherwise returns empty list.
+    Each element in the list is formatted as
+    [Term, Status, Name, Title, Catalog #, Times, Room, Instructor, Dates, Enrl Cap, Enrl Cap]
     '''
     # uncomment to write every incoming page to a random file in temp/
-    #write_page('temp/' + str(uuid.uuid4())[:5] + '.html', page)
+    write_page('temp/' + str(uuid.uuid4())[:5] + '.html', page)
     #log('Parsing page')
     if "The search returns no results that match the criteria specified." in page:
         log('No search results match criteria')
         return []
 
     soup = bs(page, 'lxml')
+    term = soup.find_all('span', {'id':'DERIVED_CLSRCH_SSS_PAGE_KEYDESCR'})[0].text.split(' | ')[1]
     tables = soup.find_all('table',{'dir':'ltr', "class":"PSLEVEL1GRID"})
     if not tables:
         tables = soup.find_all('table',{'role':'presentation', 'class':"PSLEVEL1SCROLLAREABODY"})
@@ -122,7 +133,7 @@ def parse_page(page):
     table = tables[0]
     contents = table.find_all('tr')
 
-    return [parse_item(contents[i]) for i in range(1, len(contents))]
+    return [[term] + parse_item(contents[i]) for i in range(1, len(contents))]
 
 
 def parse_item(item):
@@ -131,7 +142,7 @@ def parse_item(item):
     [Name - Title, Catalog_number, Session, Days & Times, Room(Capacity),
                 Instructor, Dates, Enrollment Cap, Enrolled, Fee, Select Class]
     They are returned as
-    [Status, Name, Title, Catalog #, Times, Room, Instructor, Dates, Cap, Enrolled]
+    [Status, Name, Title, Catalog #, Times, Room, Instructor, Dates, Enrl Cap, Enrl Cap]
     '''
     cls = []
     if item:
@@ -152,7 +163,7 @@ def output(classes, display_array):
     if classes:
         print('-'*width)
         open_classes = [x for x in classes if x[0] == "Open"]
-        format_line(['Status', 'Name', 'Title', 'Cat #', 'Times', 'Room',
+        format_line(['Term', 'Status', 'Name', 'Title', 'Cat #', 'Times', 'Room',
                         'Instructor', 'Dates', 'Enr Cap', 'Enr Tot'], display_array)
         print('-'*width)
         try:
@@ -195,9 +206,10 @@ def write_csv(file_path, classes):
         writer.writerows(classes)
 
 
-def check_classes(session, auth, class_list):
+def check_classes(session, auth, class_list, term=''):
     '''
     Checks if a list of classes given by class_list are available on SIS
+    and optionally a term to search the classes in (Defaults to current term)
     Returns list of classes currently available on SIS
     '''
     subjects = {cls[:4] : [y[5:] for y in class_list if y[:4] == cls[:4]] for cls in class_list}
@@ -205,7 +217,7 @@ def check_classes(session, auth, class_list):
     try:
         for subject in subjects:
             log('Looking for ' + subject)
-            classes = search_classes(session, authentication, course_subject=subject)
+            classes = search_classes(session, authentication, course_subject=subject, term=term)
             if not classes:
                 log('No results')
             else:
@@ -214,7 +226,7 @@ def check_classes(session, auth, class_list):
                         #log('Available class: ' + cls[1])
                         available_classes.append(cls)
     except Exception as e:
-        log(str(e))
+        log(e.value)
         return []
     return available_classes
 
@@ -259,7 +271,8 @@ def main():
 
     session = requests.session()
 
-    classes = check_classes(session, authentication, class_list)
+    #classes = check_classes(session, authentication, class_list)
+    classes = search_classes(session, authentication, course_subject='EECS', term="Spring 2015")
     write_csv('temp/classes.csv', classes)
     output(classes, display_array)
 
