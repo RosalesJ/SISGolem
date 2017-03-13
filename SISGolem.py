@@ -4,24 +4,26 @@ import time
 import uuid
 import lxml
 import requests
-import tempfile
 from datetime import datetime
 from bs4 import BeautifulSoup as bs
 from collections import OrderedDict
 
-classes_file = '/Users/cobyrosales/Documents/School/Classes.csv'
+########### Modify This ############
+authentication = ('CaseID', 'Password')             # your caseid and password
+classes_file = '/Users/cobyrosales/Documents/School/Classes.csv'  # a csv file with the classes you want to check
+#[term, status, name, title, class #, times, room, prof, dates, enrl cap, enrl tot]
+display_array = [0, 6, 9, 20, 0, 20, 0, 0, 0, 0, 0] # an array that determines the spacing of the output
+seconds_between_requests = 20                       # seconds between refreshes in monitoring mode
+####################################
+
 login_page =  'https://sismobile.case.edu/app/profile/logintoapp'
 search_page = "https://sis.case.edu/psc/P90SCWR_1/EMPLOYEE/P90SCWR/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL"
-authentication = ('CaseID', 'Password')
-
-#[term, status, name, title, class #, times, room, prof, dates, enrl cap, enrl tot]
-display_array = [0, 6, 9, 20, 0, 20, 0, 0, 0, 0, 0]
 # $TERM of $YEAR is called as term_codes[$TERM][$YEAR - 2008]
 term_codes = {'Fall'  :[2088, 2098, 2108, 2118, 2128, 2138, 2148, 2158, 2168, 2178],
               'Spring':[0000, 2091, 2101, 2111, 2121, 2131, 2141, 2151, 2161, 2171],
               'Summer':[2086, 2096, 2106, 2116, 2126, 2136, 2146, 2156, 2166, 2176]
               }
-seconds_between_requests = 20
+
 
 def log(event):
     '''Logs a string event, currently prints to command line'''
