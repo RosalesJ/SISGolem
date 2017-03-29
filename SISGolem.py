@@ -228,7 +228,7 @@ def check_classes(session, auth, class_list, term=''):
                         #log('Available class: ' + cls[2])
                         available_classes.append(cls)
     except Exception as e:
-        log(e.value)
+        log(str(e))
         return []
     return available_classes
 
