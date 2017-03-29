@@ -118,7 +118,7 @@ def parse_page(page):
     [Term, Status, Name, Title, Catalog #, Times, Room, Instructor, Dates, Enrl Cap, Enrl Cap]
     '''
     # uncomment to write every incoming page to a random file in temp/
-    write_page('temp/' + str(uuid.uuid4())[:5] + '.html', page)
+    #write_page('temp/' + str(uuid.uuid4())[:5] + '.html', page)
     #log('Parsing page')
     if "The search returns no results that match the criteria specified." in page:
         log('No search results match criteria')
@@ -224,8 +224,8 @@ def check_classes(session, auth, class_list, term=''):
                 log('No results')
             else:
                 for cls in classes:
-                    if cls[1] in class_list:
-                        #log('Available class: ' + cls[1])
+                    if cls[2] in class_list or cls[2][:4] in class_list:
+                        #log('Available class: ' + cls[2])
                         available_classes.append(cls)
     except Exception as e:
         log(e.value)
@@ -273,8 +273,8 @@ def main():
 
     session = requests.session()
 
-    #classes = check_classes(session, authentication, class_list)
-    classes = search_classes(session, authentication, course_subject='EECS', term="Spring 2015")
+    classes = check_classes(session, authentication, class_list)
+    #classes = search_classes(session, authentication, course_subject='EECS', term="Spring 2015")
     write_csv('temp/classes.csv', classes)
     output(classes, display_array)
 
