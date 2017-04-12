@@ -12,7 +12,7 @@ from collections import OrderedDict
 authentication = ('CaseID', 'Password')             # your caseid and password
 classes_file = '/Users/cobyrosales/Documents/School/Classes.csv'  # a csv file with the classes you want to check
 #[term, status, name, title, class #, times, room, prof, dates, enrl cap, enrl tot]
-display_array = [0, 6, 9, 20, 0, 20, 0, 0, 0, 0, 0] # an array that determines the spacing of the output
+display_array = [0, 6, 9, 30, 0, 20, 0, 20, 0, 0, 0] # an array that determines the spacing of the output
 seconds_between_requests = 20                       # seconds between refreshes in monitoring mode
 ####################################
 
@@ -73,7 +73,7 @@ def search_classes(session, auth, course_subject='', catalog_number='', title_ke
                 log("Logged into SIS")
 
             response = session.get(search_page).text
-
+        log('Looking for ' + course_subject + catalog_number)
         query = {
             "course_subject": course_subject,
             "catalog_number": catalog_number,
@@ -164,7 +164,7 @@ def output(classes, display_array):
     width =  sum(display_array) + 3*len([x for x in display_array if x]) - 1
     if classes:
         print('-'*width)
-        open_classes = [x for x in classes if x[0] == "Open"]
+        open_classes = [x for x in classes if x[1] == "Open"]
         format_line(['Term', 'Status', 'Name', 'Title', 'Cat #', 'Times', 'Room',
                         'Instructor', 'Dates', 'Enr Cap', 'Enr Tot'], display_array)
         print('-'*width)
@@ -218,7 +218,6 @@ def check_classes(session, auth, class_list, term=''):
     available_classes = []
     try:
         for subject in subjects:
-            log('Looking for ' + subject)
             classes = search_classes(session, authentication, course_subject=subject, term=term)
             if not classes:
                 log('No results')
@@ -227,6 +226,12 @@ def check_classes(session, auth, class_list, term=''):
                     if cls[2] in class_list or cls[2][:4] in class_list:
                         #log('Available class: ' + cls[2])
                         available_classes.append(cls)
+
+        not_found = [cls for cls in class_list if cls not in [x[2] for x in available_classes]]
+        log("Classes not found")
+        for cls in not_found:
+            print(cls)
+
     except Exception as e:
         log(str(e))
         return []
@@ -269,15 +274,18 @@ def main():
                 if element.startswith(u'\ufeff'):
                     element = element[1:]
                 if element:
-                    class_list.append(element)
+                    for e in element.split('\t'):
+                        if e:
+                            class_list.append(e)
 
     session = requests.session()
-
     classes = check_classes(session, authentication, class_list)
     #classes = search_classes(session, authentication, course_subject='EECS', term="Spring 2015")
     write_csv('temp/classes.csv', classes)
     output(classes, display_array)
 
+    #classes = check_classes(session, authentication, ["MATH", "EECS"])
+    #output(classes, display_array)
 
 if __name__ == '__main__':
     main()
