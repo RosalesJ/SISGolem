@@ -9,10 +9,22 @@ from bs4 import BeautifulSoup as bs
 from collections import OrderedDict
 
 ########### Modify This ############
-authentication = ('CaseID', 'Password')             # your caseid and password
-classes_file = '/Users/cobyrosales/Documents/School/Classes.csv'  # a csv file with the classes you want to check
-#[term, status, name, title, class #, times, room, prof, dates, enrl cap, enrl tot]
-display_array = [0, 6, 9, 30, 0, 20, 0, 20, 0, 0, 0] # an array that determines the spacing of the output
+authentication = ('CaseID', 'Password')  # caseid and password
+classes_file = '/Users/cobyrosales/Documents/School/Classes.csv'
+#Governs how many spaces are allocated to each category when displayed
+display_dict =  [
+    ("Term",0),
+    ('Status',6),
+    ('Name',9),
+    ('Title',30),
+    ('Cat#',0),
+    ('Times',20),
+    ('Room',10),
+    ('Instructor',20),
+    ('Dates',0),
+    ('Enr Cap',0),
+    ('Enr Tot',0)]
+
 seconds_between_requests = 20                       # seconds between refreshes in monitoring mode
 ####################################
 
@@ -159,14 +171,14 @@ def parse_item(item):
     return cls
 
 
-def output(classes, display_array):
-    '''Writes classes in a pretty box given a list of classes and the display array'''
+def output(classes, display_dict):
+    '''Writes classes in a pretty box given a list of classes and the display dict'''
+    display_array = [x[1] for x in display_dict]
     width =  sum(display_array) + 3*len([x for x in display_array if x]) - 1
     if classes:
         print('-'*width)
         open_classes = [x for x in classes if x[1] == "Open"]
-        format_line(['Term', 'Status', 'Name', 'Title', 'Cat #', 'Times', 'Room',
-                        'Instructor', 'Dates', 'Enr Cap', 'Enr Tot'], display_array)
+        format_line([x[0] for x in display_dict], display_array)
         print('-'*width)
         try:
             for line in classes:
@@ -254,11 +266,11 @@ def monitor_classes(session, auth, class_list):
                         working_classes[cls[7]] = cls
                         new_classes.append(cls)
                 if(new_classes):
-                    output(new_classes, display_array)
+                    output(new_classes, display_dict)
                 log("New Classes: " + str(len(new_classes)))
                 log("Old Classes: " + str(len(working_classes) - len(new_classes)))
 
-                #output([x for x in working_classes.values()], display_array)
+                #output([x for x in working_classes.values()], display_dict)
                 time.sleep(seconds_between_requests)
     except KeyboardInterrupt:
         print()
@@ -279,13 +291,11 @@ def main():
                             class_list.append(e)
 
     session = requests.session()
-    classes = check_classes(session, authentication, class_list)
-    #classes = search_classes(session, authentication, course_subject='EECS', term="Spring 2015")
+    #classes = check_classes(session, authentication, class_list)
+    classes = search_classes(session, authentication, course_subject='EECS', term="Spring 2015")
     write_csv('temp/classes.csv', classes)
-    output(classes, display_array)
+    output(classes, display_dict)
 
-    #classes = check_classes(session, authentication, ["MATH", "EECS"])
-    #output(classes, display_array)
 
 if __name__ == '__main__':
     main()
