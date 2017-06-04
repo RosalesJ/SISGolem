@@ -238,7 +238,7 @@ def check_classes(session, auth, class_list, term=[""], keyword=""):
     available_classes = []
     try:
         for c in criteria:
-            classes = search_classes(session, authentication, course_subject=c[0], term=c[1],title_keyword=keyword)
+            classes = search_classes(session, auth, course_subject=c[0], term=c[1],title_keyword=keyword)
             if not classes:
                 log('No results')
             else:
@@ -303,7 +303,11 @@ def main():
     verbose = results.verbose
     input_file = results.input_file
     output_file = results.output_file
-    term_list = [term.title()[:len(term)-4] + " " + term[len(term)-4:] for term in results.terms]
+    term_list = [""]
+    if results.terms:
+        term_list = [term.title()[:len(term)-4] + " " + term[len(term)-4:] for term in results.terms]
+
+    print(authentication)
 
     if(input_file):
         with open(input_file) as file:
