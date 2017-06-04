@@ -292,8 +292,8 @@ def main():
     parser.add_argument("authentication", help="username:password")
     parser.add_argument("classes", help="the classes to search for", nargs="+")
     parser.add_argument("-v","--verbose",help="increase output verbosity", dest="verbose",type=int,choices=[0,1,2], nargs=1)
-    parser.add_argument("-o", "--output", help="an output csv file", dest="input_file", nargs="?")
-    parser.add_argument("-i", "--input", help="an input csv file", dest="output_file", nargs="?")
+    parser.add_argument("-o", "--output", help="an output csv file", dest="output_file", nargs="?")
+    parser.add_argument("-i", "--input", help="an input csv file", dest="input_file", nargs="?")
     parser.add_argument("-t", "--term",help="the specified terms", dest="terms", nargs="+")
 
     results = parser.parse_args()
@@ -304,9 +304,6 @@ def main():
     input_file = results.input_file
     output_file = results.output_file
     term_list = [term.title()[:len(term)-4] + " " + term[len(term)-4:] for term in results.terms]
-
-    print(class_list)
-    print(term_list)
 
     if(input_file):
         with open(input_file) as file:
