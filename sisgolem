@@ -12,7 +12,6 @@ from collections import OrderedDict
 
 
 ########### Modify This ############
-authentication = ('Username', 'Password')  # caseid and password
 input_file = '/Users/cobyrosales/Documents/School/Classes.csv'
 verbose = 2
 #Governs how many spaces are allocated to each category when displayed
@@ -291,7 +290,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("authentication", help="username:password")
     parser.add_argument("classes", help="the classes to search for", nargs="+")
-    parser.add_argument("-v","--verbose",help="increase output verbosity", dest="verbose",type=int,choices=[0,1,2], nargs=1)
+    parser.add_argument("-v","--verbose",help="increase output verbosity", dest="verbose",type=int,choices=[0,1,2])
     parser.add_argument("-o", "--output", help="an output csv file", dest="output_file", nargs="?")
     parser.add_argument("-i", "--input", help="an input csv file", dest="input_file", nargs="?")
     parser.add_argument("-t", "--term",help="the specified terms", dest="terms", nargs="+")
@@ -300,14 +299,13 @@ def main():
 
     authentication = (results.authentication.split(':',1)[0],results.authentication.split(':',1)[1])
     class_list = [cls if len(cls) == 4 else cls[:4] + " " + cls[4:] for cls in results.classes]
+    global verbose
     verbose = results.verbose
     input_file = results.input_file
     output_file = results.output_file
     term_list = [""]
     if results.terms:
         term_list = [term.title()[:len(term)-4] + " " + term[len(term)-4:] for term in results.terms]
-
-    print(authentication)
 
     if(input_file):
         with open(input_file) as file:
