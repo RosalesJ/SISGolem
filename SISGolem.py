@@ -4,23 +4,26 @@ import time
 import uuid
 import lxml
 import requests
+import argparse
 from datetime import datetime
 from bs4 import BeautifulSoup as bs
 from collections import OrderedDict
 
+
 ########### Modify This ############
-authentication = ('CaseID', 'Password')  # caseid and password
-classes_file = '/Users/cobyrosales/Documents/School/Classes.csv'
+authentication = ('Username', 'Password')  # caseid and password
+input_file = '/Users/cobyrosales/Documents/School/Classes.csv'
+verbose = 2
 #Governs how many spaces are allocated to each category when displayed
 display_dict =  [
-    ("Term",0),
+    ("Term",10),
     ('Status',6),
     ('Name',9),
     ('Title',30),
     ('Cat#',0),
     ('Times',20),
-    ('Room',10),
-    ('Instructor',20),
+    ('Room',0),
+    ('Instructor',0),
     ('Dates',0),
     ('Enr Cap',0),
     ('Enr Tot',0)]
@@ -39,7 +42,8 @@ term_codes = {'Fall'  :[2088, 2098, 2108, 2118, 2128, 2138, 2148, 2158, 2168, 21
 
 def log(event):
     '''Logs a string event, currently prints to command line'''
-    print(str(datetime.now().strftime('%H:%M:%S')) + ' ::: ' + str(event))
+    if verbose == 2:
+        print(str(datetime.now().strftime('%H:%M:%S')) + ' ::: ' + str(event))
 
 
 def logged_in(page_response):
@@ -173,25 +177,26 @@ def parse_item(item):
 
 def output(classes, display_dict):
     '''Writes classes in a pretty box given a list of classes and the display dict'''
-    display_array = [x[1] for x in display_dict]
-    width =  sum(display_array) + 3*len([x for x in display_array if x]) - 1
-    if classes:
-        print('-'*width)
-        open_classes = [x for x in classes if x[1] == "Open"]
-        format_line([x[0] for x in display_dict], display_array)
-        print('-'*width)
-        try:
-            for line in classes:
-                format_line(line, display_array)
-        except Exception as e:
-            log(str(e))
-            log("Error in error print")
+    if verbose >= 1 :
+        display_array = [x[1] for x in display_dict]
+        width =  sum(display_array) + 3*len([x for x in display_array if x]) - 1
+        if classes:
+            print('-'*width)
+            open_classes = [x for x in classes if x[1] == "Open"]
+            format_line([x[0] for x in display_dict], display_array)
+            print('-'*width)
+            try:
+                for line in classes:
+                    format_line(line, display_array)
+            except Exception as e:
+                log(str(e))
+                log("Error in error print")
 
-        print('-'*width)
-        print("Total Results: " + str(len(classes)))
-        print("Total Closed: " + str(len(classes) - len(open_classes)))
-        print("Total Open: " + str(len(open_classes)))
-        print('-'*width)
+            print('-'*width)
+            print("Total Results: " + str(len(classes)))
+            print("Total Closed: " + str(len(classes) - len(open_classes)))
+            print("Total Open: " + str(len(open_classes)))
+            print('-'*width)
 
 
 def format_line(line, display_array):
@@ -220,17 +225,19 @@ def write_csv(file_path, classes):
         writer.writerows(classes)
 
 
-def check_classes(session, auth, class_list, term=''):
+def check_classes(session, auth, class_list, term=[""], keyword=""):
     '''
     Checks if a list of classes given by class_list are available on SIS
     and optionally a term to search the classes in (Defaults to current term)
     Returns list of classes currently available on SIS
     '''
     subjects = {cls[:4] : [y[5:] for y in class_list if y[:4] == cls[:4]] for cls in class_list}
+    criteria = [(s,t) for s in subjects for t in term]
+
     available_classes = []
     try:
-        for subject in subjects:
-            classes = search_classes(session, authentication, course_subject=subject, term=term)
+        for c in criteria:
+            classes = search_classes(session, authentication, course_subject=c[0], term=c[1],title_keyword=keyword)
             if not classes:
                 log('No results')
             else:
@@ -239,7 +246,7 @@ def check_classes(session, auth, class_list, term=''):
                         #log('Available class: ' + cls[2])
                         available_classes.append(cls)
 
-        not_found = [cls for cls in class_list if cls not in [x[2] for x in available_classes]]
+        not_found = [cls for cls in class_list if cls not in [x[2] for x in available_classes] and len(cls) != 4]
         log("Classes not found")
         for cls in not_found:
             print(cls)
@@ -279,21 +286,44 @@ def monitor_classes(session, auth, class_list):
 
 def main():
     class_list = []
-    with open(classes_file) as file:
-        reader = csv.reader(file)
-        for row in reader:
-            for element in row:
-                if element.startswith(u'\ufeff'):
-                    element = element[1:]
-                if element:
-                    for e in element.split('\t'):
-                        if e:
-                            class_list.append(e)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("authentication", help="username:password")
+    parser.add_argument("classes", help="the classes to search for", nargs="+")
+    parser.add_argument("-v","--verbose",help="increase output verbosity", dest="verbose",type=int,choices=[0,1,2], nargs=1)
+    parser.add_argument("-o", "--output", help="an output csv file", dest="input_file", nargs="?")
+    parser.add_argument("-i", "--input", help="an input csv file", dest="output_file", nargs="?")
+    parser.add_argument("-t", "--term",help="the specified terms", dest="terms", nargs="+")
+
+    results = parser.parse_args()
+
+    authentication = (results.authentication.split(':',1)[0],results.authentication.split(':',1)[1])
+    class_list = [cls if len(cls) == 4 else cls[:4] + " " + cls[4:] for cls in results.classes]
+    verbose = results.verbose
+    input_file = results.input_file
+    output_file = results.output_file
+    term_list = [term.title()[:len(term)-4] + " " + term[len(term)-4:] for term in results.terms]
+
+    print(class_list)
+    print(term_list)
+
+    if(input_file):
+        with open(input_file) as file:
+            reader = csv.reader(file)
+            for row in reader:
+                for element in row:
+                    if element.startswith(u'\ufeff'):
+                        element = element[1:]
+                        if element:
+                            for e in element.split('\t'):
+                                if e:
+                                    class_list.append(e)
 
     session = requests.session()
-    #classes = check_classes(session, authentication, class_list)
-    classes = search_classes(session, authentication, course_subject='EECS', term="Spring 2015")
-    write_csv('temp/classes.csv', classes)
+
+    classes = check_classes(session, authentication, class_list, term=term_list)
+    if output_file:
+        write_csv(output_file, classes)
     output(classes, display_dict)
 
 
