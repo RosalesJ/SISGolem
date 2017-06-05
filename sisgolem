@@ -225,6 +225,21 @@ def write_csv(file_path, classes):
         writer.writerows(classes)
 
 
+def read_csv(file_path):
+    class_list = []
+    with open(file_path) as file:
+        reader = csv.reader(file)
+        for row in reader:
+            for element in row:
+                if element.startswith(u'\ufeff'):
+                    element = element[1:]
+                    if element:
+                        for e in element.split('\t'):
+                            if e:
+                                class_list.append(e)
+    return class_list
+
+
 def check_classes(session, auth, class_list, term=[""], keyword=""):
     '''
     Checks if a list of classes given by class_list are available on SIS
@@ -290,7 +305,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("authentication", help="username:password")
     parser.add_argument("classes", help="the classes to search for", nargs="+")
-    parser.add_argument("-v","--verbose",help="increase output verbosity", dest="verbose",type=int,choices=[0,1,2])
+    parser.add_argument("-v","--verbose",help="modify output verbosity", dest="verbose",type=int,choices=[0,1,2])
     parser.add_argument("-o", "--output", help="an output csv file", dest="output_file", nargs="?")
     parser.add_argument("-i", "--input", help="an input csv file", dest="input_file", nargs="?")
     parser.add_argument("-t", "--term",help="the specified terms", dest="terms", nargs="+")
@@ -300,28 +315,17 @@ def main():
     authentication = (results.authentication.split(':',1)[0],results.authentication.split(':',1)[1])
     class_list = [cls if len(cls) == 4 else cls[:4] + " " + cls[4:] for cls in results.classes]
     global verbose
-    verbose = results.verbose
-    input_file = results.input_file
-    output_file = results.output_file
-    term_list = [""]
-    if results.terms:
-        term_list = [term.title()[:len(term)-4] + " " + term[len(term)-4:] for term in results.terms]
+    verbose = results.verbose if results.verbose else 2
+    input_file = results.input_file if results.input_file else ""
+    output_file = results.output_file if results.output_file else ""
+    term_list = [term.title()[:len(term)-4] + " " + term[len(term)-4:] for term in results.terms] if results.terms else [""]
 
     if(input_file):
-        with open(input_file) as file:
-            reader = csv.reader(file)
-            for row in reader:
-                for element in row:
-                    if element.startswith(u'\ufeff'):
-                        element = element[1:]
-                        if element:
-                            for e in element.split('\t'):
-                                if e:
-                                    class_list.append(e)
+        class_list.append(read_csv(input_file))
 
     session = requests.session()
-
     classes = check_classes(session, authentication, class_list, term=term_list)
+
     if output_file:
         write_csv(output_file, classes)
     output(classes, display_dict)
