@@ -6,38 +6,18 @@ import uuid
 import lxml
 import requests
 import argparse
+import xml.etree.ElementTree as et
 from datetime import datetime
 from bs4 import BeautifulSoup as bs
 from collections import OrderedDict
 
-
-########### Modify This ############
-input_file = '/Users/cobyrosales/Documents/School/Classes.csv'
-verbose = 2
-#Governs how many spaces are allocated to each category when displayed
-display_dict =  [
-    ("Term",10),
-    ('Status',6),
-    ('Name',9),
-    ('Title',30),
-    ('Cat#',0),
-    ('Times',20),
-    ('Room',0),
-    ('Instructor',0),
-    ('Dates',0),
-    ('Enr Cap',0),
-    ('Enr Tot',0)]
-
-seconds_between_requests = 20                       # seconds between refreshes in monitoring mode
-####################################
-
+settings_page = 'settings.xml'
 login_page =  'https://sismobile.case.edu/app/profile/logintoapp'
 search_page = "https://sis.case.edu/psc/P90SCWR_1/EMPLOYEE/P90SCWR/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL"
-# $TERM of $YEAR is called as term_codes[$TERM][$YEAR - 2008]
+# TERM of YEAR is called as term_codes[TERM][YEAR - 2008]
 term_codes = {'Fall'  :[2088, 2098, 2108, 2118, 2128, 2138, 2148, 2158, 2168, 2178],
               'Spring':[0000, 2091, 2101, 2111, 2121, 2131, 2141, 2151, 2161, 2171],
-              'Summer':[2086, 2096, 2106, 2116, 2126, 2136, 2146, 2156, 2166, 2176]
-              }
+              'Summer':[2086, 2096, 2106, 2116, 2126, 2136, 2146, 2156, 2166, 2176]}
 
 
 def log(event):
@@ -302,25 +282,34 @@ def monitor_classes(session, auth, class_list):
 def main():
     class_list = []
 
+    root = et.parse(settings_page).getroot()
+    authentication = (root.find('username').text,root.find('password').text)
+    input_file = root.find('inputFile').text
+    output_file = root.find('outputFile').text
+    display_dict = [(x.tag,int(x.text)) for x in root.find('display')]
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("authentication", help="username:password")
     parser.add_argument("classes", help="the classes to search for", nargs="+")
-    parser.add_argument("-v","--verbose",help="modify output verbosity", dest="verbose",type=int,choices=[0,1,2])
-    parser.add_argument("-o", "--output", help="an output csv file", dest="output_file", nargs="?")
-    parser.add_argument("-i", "--input", help="an input csv file", dest="input_file", nargs="?")
-    parser.add_argument("-t", "--term",help="the specified terms", dest="terms", nargs="+")
+    parser.add_argument("-a", "--auth", help="username:password", action="store")
+    parser.add_argument("-v","--verbose",help="modify output verbosity",type=int,choices=[0,1,2],default=2)
+    parser.add_argument("-o", "--output", help="an output csv file", action="store",default=" ", nargs="?")
+    parser.add_argument("-i", "--input", help="an input csv file", action="store", default=" ",nargs="?")
+    parser.add_argument("-t", "--terms",help="the specified terms", nargs="+",default=[''])
 
     results = parser.parse_args()
 
-    authentication = (results.authentication.split(':',1)[0],results.authentication.split(':',1)[1])
-    class_list = [cls if len(cls) == 4 else cls[:4] + " " + cls[4:] for cls in results.classes]
     global verbose
-    verbose = results.verbose if results.verbose else 2
-    input_file = results.input_file if results.input_file else ""
-    output_file = results.output_file if results.output_file else ""
-    term_list = [term.title()[:len(term)-4] + " " + term[len(term)-4:] for term in results.terms] if results.terms else [""]
+    verbose = results.verbose
+    class_list = [cls.upper() if len(cls) == 4 else cls[:4].upper() + " " + cls[4:] for cls in results.classes]
+    if results.auth:
+        authentication = (results.auth.split(':',1)[0],results.auth.split(':',1)[1])
+    if results.input:
+        input_file = None if results.input is " " else results.input
+    if results.output:
+        output_file = None if results.output is " " else results.output
+    term_list = [term.title()[:len(term)-4] + (" " if term else "") + term[len(term)-4:] for term in results.terms]
 
-    if(input_file):
+    if input_file:
         class_list.append(read_csv(input_file))
 
     session = requests.session()
@@ -328,6 +317,7 @@ def main():
 
     if output_file:
         write_csv(output_file, classes)
+
     output(classes, display_dict)
 
 

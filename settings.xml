@@ -1,0 +1,19 @@
+<settings>
+  <username>Username</username>
+  <password>Password/</password>
+  <inputFile>temp/input.csv</inputFile>
+  <outputFile>temp/output.csv</outputFile>
+  <display>
+    <Term>10</Term>
+    <Status>6</Status>
+    <Name>9</Name>
+    <Title>30</Title>
+    <Catalog>0</Catalog>
+    <Times>20</Times>
+    <Room>0</Room>
+    <Instructor>0</Instructor>
+    <Dates>0</Dates>
+    <EnrlCap>0</EnrlCap>
+    <EnrlTot>0</EnrlTot>
+  </display>
+</settings>
