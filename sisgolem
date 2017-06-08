@@ -297,17 +297,17 @@ def main():
     parser.add_argument("-t", "--terms",help="the specified terms", nargs="+",default=[''])
 
     results = parser.parse_args()
-
     global verbose
     verbose = results.verbose
     class_list = [cls.upper() if len(cls) == 4 else cls[:4].upper() + " " + cls[4:] for cls in results.classes]
+    term_list = [term.title()[:len(term)-4] + (" " if term else "") + term[len(term)-4:] for term in results.terms]
     if results.auth:
         authentication = (results.auth.split(':',1)[0],results.auth.split(':',1)[1])
     if results.input:
         input_file = None if results.input is " " else results.input
     if results.output:
         output_file = None if results.output is " " else results.output
-    term_list = [term.title()[:len(term)-4] + (" " if term else "") + term[len(term)-4:] for term in results.terms]
+
 
     if input_file:
         class_list.append(read_csv(input_file))
@@ -317,6 +317,7 @@ def main():
 
     if output_file:
         write_csv(output_file, classes)
+
 
     output(classes, display_dict)
 
