@@ -1,6 +1,6 @@
 <settings>
   <username>Username</username>
-  <password>Password/</password>
+  <password>Password</password>
   <inputFile>temp/input.csv</inputFile>
   <outputFile>temp/output.csv</outputFile>
   <display>
