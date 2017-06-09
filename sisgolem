@@ -290,7 +290,7 @@ def main():
     display_dict = [(x.tag,int(x.text)) for x in root.find('display')]
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("classes", help="the classes to search for", nargs="?")
+    parser.add_argument("classes", help="the classes to search for", nargs="*")
     parser.add_argument("-a", "--auth", help="username:password", action="store")
     parser.add_argument("-v","--verbose",help="modify output verbosity",type=int,choices=[0,1,2],default=2)
     parser.add_argument("-o", "--output", help="an output csv file", action="store",default=" ", nargs="?")
