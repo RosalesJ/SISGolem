@@ -242,7 +242,8 @@ def check_classes(session, auth, class_list, term=[""], keyword=""):
                         available_classes.append(cls)
 
         not_found = [cls for cls in class_list if cls not in [x[2] for x in available_classes] and len(cls) != 4]
-        log("Classes not found")
+        if not_found:
+            log("Classes not found")
         for cls in not_found:
             print(cls)
 
@@ -289,7 +290,7 @@ def main():
     display_dict = [(x.tag,int(x.text)) for x in root.find('display')]
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("classes", help="the classes to search for", nargs="+")
+    parser.add_argument("classes", help="the classes to search for", nargs="?")
     parser.add_argument("-a", "--auth", help="username:password", action="store")
     parser.add_argument("-v","--verbose",help="modify output verbosity",type=int,choices=[0,1,2],default=2)
     parser.add_argument("-o", "--output", help="an output csv file", action="store",default=" ", nargs="?")
@@ -299,7 +300,8 @@ def main():
     results = parser.parse_args()
     global verbose
     verbose = results.verbose
-    class_list = [cls.upper() if len(cls) == 4 else cls[:4].upper() + " " + cls[4:] for cls in results.classes]
+    if results.classes:
+        class_list = [cls.upper() if len(cls) == 4 else cls[:4].upper() + " " + cls[4:] for cls in results.classes]
     term_list = [term.title()[:len(term)-4] + (" " if term else "") + term[len(term)-4:] for term in results.terms]
     if results.auth:
         authentication = (results.auth.split(':',1)[0],results.auth.split(':',1)[1])
@@ -307,10 +309,11 @@ def main():
         input_file = None if results.input is " " else results.input
     if results.output:
         output_file = None if results.output is " " else results.output
-
-
     if input_file:
-        class_list.append(read_csv(input_file))
+        class_list = class_list + read_csv(input_file)
+
+    if not class_list:
+        parser.print_help()
 
     session = requests.session()
     classes = check_classes(session, authentication, class_list, term=term_list)
