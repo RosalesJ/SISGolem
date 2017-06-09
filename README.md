@@ -81,7 +81,7 @@ Total Open: 0
 ```
 SISGolem is pretty flexible.
 ## Arguments
-#### Classes
+### Classes
 The core compitency of SISGolem and it's main argument. SISGolem can look up an arbitrary number of classes, so go crazy.
 ```
 $ sisgolem EECS132 EECS223 MATH121 MATH121 MATH122 MATH233 CHEM111
@@ -90,7 +90,7 @@ $ sisgolem EECS132 EECS223 MATH121 MATH121 MATH122 MATH233 CHEM111
 * Classes are case insensitive
 * A class with no course number will return all classes under subject. so ```$ sisgolem MATH``` will return all math classes
 * Classes can be left blank in the case that classes are being read from an input file
-#### Term
+### Term
 SISGolem can check classes in an arbitrary number of terms using the argument ```-t TERMS [TERMS ...], --terms TERMS [TERMS ...]```.
 ```
 $ sisgolem eecs132 eecs223 -t spring2012 fall2013
@@ -105,12 +105,12 @@ If used, terms should be specified after classes. Otherwise SISGolem won't know 
 $ sisgolem -t spring2012 fall2013 eecs132 eecs223
 ```
 Will mistake ```eecs132 and eecs223``` as terms. The intended behaviour is achieved using the example at the beginning of this section.
-#### Authentication
+### Authentication
 SISGolem uses the username and password defined in ```settings.xml``` by default, but they can be overridden from the command line using the ```-a [AUTH], --auth [AUTH]``` where ```AUTH``` is in the form ```username:password```.
 ```
 $ sisgolem -a jxr450:password EECS132
 ```
-#### Input/Output
+### Input/Output
 You can configure input and output files for SISGolem to push and pull classes from. Use the arguments ```-o [OUTPUT], --output [OUTPUT]  ``` and ```-i [INPUT], --input``` where ```OUTPUT, INPUT``` are the paths to output/input csv files. If either is left blank then SISGolem will use the default input/output files.
 ```
 $ sisgolem -i -o
@@ -126,7 +126,7 @@ The intent is to use the default input, and search for ```MATH380``` and ``` MAT
 $ sisgolem MATH380 MATH303 -i
 ```
 
-#### Verbosity
+### Verbosity
 Control what SISGolem will tell you during and after searching for classes by using the ```-v {0,1,2}, --verbose {0,1,2}``` argument. This argument can only take on three values.
 * 0 : Completely quiet. No console output.
 * 1 : Disabled log output. Only final class diplay enabled.
