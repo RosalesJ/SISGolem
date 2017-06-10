@@ -80,6 +80,13 @@ Total Open: 0
 -------------------------------------------------------------
 ```
 SISGolem is pretty flexible.
+
+## Display
+You can customize the way that SISGolem outputs to the command line by changing
+```settings.xml```. The integers under each category represent the number of
+columns dedicated to that category in the program output.
+
+
 ## Arguments
 ### Classes
 The core compitency of SISGolem and it's main argument. SISGolem can look up an arbitrary number of classes, so go crazy.
