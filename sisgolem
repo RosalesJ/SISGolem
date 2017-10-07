@@ -1,14 +1,11 @@
 #! /usr/bin/env python3
-import re
 import time
-import uuid
 import argparse
 import xml.etree.ElementTree as et
 from collections import OrderedDict
 
 import networking as net
 import golemio as io
-import parsing as ps
 
 settings_page = 'settings.xml'
 
@@ -40,6 +37,7 @@ def check_classes(session, auth, class_list, term=[""], keyword=""):
             print(cls)
 
     except Exception as e:
+        io.log("Exception while checking classes")
         io.log(str(e))
         return []
     return available_classes
@@ -74,27 +72,26 @@ def monitor_classes(session, auth, class_list):
 
 def parseArgs():
     class_list = []
-
+    # pull defaults from the settings.xml file
     root = et.parse(settings_page).getroot()
     authentication = (root.find('username').text,root.find('password').text)
     input_file = root.find('inputFile').text
     output_file = root.find('outputFile').text
     display_dict = [(x.tag,int(x.text)) for x in root.find('display')]
-
+    # add parser arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("classes", help="the classes to search for", nargs="*")
     parser.add_argument("-a", "--auth", help="username:password", action="store")
-    # parser.add_argument("-v","--verbose",help="modify output verbosity",type=int,choices=[0,1,2],default=2)
-    parser.add_argument("-o", "--output", help="an output csv file", action="store",default=" ", nargs="?")
-    parser.add_argument("-i", "--input", help="an input csv file", action="store", default=" ",nargs="?")
     parser.add_argument("-t", "--terms",help="the specified terms", nargs="+",default=[''])
-
+    parser.add_argument("-i", "--input", help="an input csv file", action="store", default=" ",nargs="?")
+    parser.add_argument("-o", "--output", help="an output csv file", action="store",default=" ", nargs="?")
+    # parser.add_argument("-v","--verbose",help="modify output verbosity",type=int,choices=[0,1,2],default=2)
     results = parser.parse_args()
     # global verbose
     # verbose = results.verbose
+    term_list = [term.title()[:len(term)-4] + (" " if term else "") + term[len(term)-4:] for term in results.terms]
     if results.classes:
         class_list = [cls.upper() if len(cls) == 4 else cls[:4].upper() + " " + cls[4:] for cls in results.classes]
-    term_list = [term.title()[:len(term)-4] + (" " if term else "") + term[len(term)-4:] for term in results.terms]
     if results.auth:
         authentication = (results.auth.split(':',1)[0],results.auth.split(':',1)[1])
     if results.input:

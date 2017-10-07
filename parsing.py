@@ -1,3 +1,4 @@
+import re
 import lxml
 from bs4 import BeautifulSoup as bs
 import golemio as io
@@ -10,9 +11,7 @@ def parse_page(page):
     Each element in the list is formatted as
     [Term, Status, Name, Title, Catalog #, Times, Room, Instructor, Dates, Enrl Cap, Enrl Cap]
     '''
-    # uncomment to write every incoming page to a random file in temp/
-    #io.write_page('temp/' + str(uuid.uuid4())[:5] + '.html', page)
-    #io.log('Parsing page')
+    # io.log('Parsing page')
     if "The search returns no results that match the criteria specified." in page:
         io.log('No search results match criteria')
         return []
@@ -27,7 +26,6 @@ def parse_page(page):
 
     table = tables[0]
     contents = table.find_all('tr')
-
     return [[term] + parse_item(contents[i]) for i in range(1, len(contents))]
 
 

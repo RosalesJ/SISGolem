@@ -6,6 +6,7 @@ def log(event):
     # if verbose == 2:
     print(str(datetime.now().strftime('%H:%M:%S')) + ' ::: ' + str(event))
 
+
 def write_page(file_path, response):
     '''Write raw text response to file at file_path'''
     log("Writing page to " + file_path)
@@ -50,8 +51,8 @@ def output(classes, display_dict):
             for line in classes:
                 format_line(line, display_array)
         except Exception as e:
-            log(str(e))
             log("Error in error print")
+            log(str(e))
 
         print('-'*width)
         print("Total Results: " + str(len(classes)))

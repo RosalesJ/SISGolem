@@ -12,6 +12,7 @@ term_codes = {'Fall'  :[2088, 2098, 2108, 2118, 2128, 2138, 2148, 2158, 2168, 21
 def get_session():
     return requests.session()
 
+
 def logged_in(page_response):
     '''Checks if logged in given a page response'''
     return "ERP Student Information System Sign-in" not in page_response
@@ -45,7 +46,6 @@ def search_classes(session, auth, course_subject='', catalog_number='', title_ke
     try:
         if not login(session, auth):
             raise Exception("Login Error")
-
         io.log('Looking for ' + course_subject + catalog_number)
         query = {
             "course_subject": course_subject,
@@ -76,7 +76,6 @@ def query_page(session, query):
         'SSR_CLSRCH_WRK_CATALOG_NBR$1':query['catalog_number'],
         'SSR_CLSRCH_WRK_DESCR$10':query['title_keyword']
         }
-    #io.log('Getting search page')
     response = session.post(search_page, data=payload)
     response = session.post(search_page, data={'ICAction':'#ICSave'})
     return response
