@@ -54,10 +54,10 @@ def search_classes(session, auth, course_subject='', catalog_number='', title_ke
             "term":term_codes[term.split()[0]][int(term.split()[1]) - 2008] if term else ''
             }
         response = query_page(session, query)
-        if response:
+        if response and logged_in(response.text):
            return ps.parse_page(response.text)
         else:
-            io.log("No response")
+            io.log("No response" if not response else "User logged out")
             return []
     except requests.exceptions.ConnectionError as e:
         io.log("Connection Error")
