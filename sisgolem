@@ -1,224 +1,16 @@
 #! /usr/bin/env python3
 import re
-import csv
 import time
 import uuid
-import lxml
-import requests
 import argparse
 import xml.etree.ElementTree as et
-from datetime import datetime
-from bs4 import BeautifulSoup as bs
 from collections import OrderedDict
 
+import networking as net
+import golemio as io
+import parsing as ps
+
 settings_page = 'settings.xml'
-login_page =  'https://sismobile.case.edu/app/profile/logintoapp'
-search_page = "https://sis.case.edu/psc/P90SCWR_1/EMPLOYEE/P90SCWR/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL"
-# TERM of YEAR is called as term_codes[TERM][YEAR - 2008]
-term_codes = {'Fall'  :[2088, 2098, 2108, 2118, 2128, 2138, 2148, 2158, 2168, 2178],
-              'Spring':[0000, 2091, 2101, 2111, 2121, 2131, 2141, 2151, 2161, 2171],
-              'Summer':[2086, 2096, 2106, 2116, 2126, 2136, 2146, 2156, 2166, 2176]}
-
-
-def log(event):
-    '''Logs a string event, currently prints to command line'''
-    if verbose == 2:
-        print(str(datetime.now().strftime('%H:%M:%S')) + ' ::: ' + str(event))
-
-
-def logged_in(page_response):
-    '''Checks if logged in given a page response'''
-    return "ERP Student Information System Sign-in" not in page_response
-
-
-def login(session, auth):
-    '''Logs session into SIS'''
-    log('Logging into SIS')
-    payload = {
-        'username': auth[0],
-        'password': auth[1],
-        'loginAction': '',
-        'institution': 'CASE1'
-    }
-    response = session.post(login_page, data=payload)
-    try:
-        if "incorrect" in response.text:
-            log('Wrong username or password')
-            return False
-    except Exception as e:
-        log('Exception Raised while logging in:')
-        log(str(e))
-        log("Authentication Error")
-        return False
-    return True
-
-
-def search_classes(session, auth, course_subject='', catalog_number='', title_keyword='', term=''):
-    '''
-    Searches for classes given some criteria.
-    Logs user in if not already logged in.
-    Returns list of classes if everything works, otherwise returns empty list.
-    term should be in the form "Fall 2018" for years from 2008 - 2017 and Fall, Summer, Spring
-    '''
-    try:
-        response = session.get(search_page)
-        if not logged_in(response.text):
-            if not login(session, auth):
-                raise Exception("Login Error")
-            else:
-                log("Logged into SIS")
-
-            response = session.get(search_page).text
-        log('Looking for ' + course_subject + catalog_number)
-        query = {
-            "course_subject": course_subject,
-            "catalog_number": catalog_number,
-            "title_keyword": title_keyword,
-            "term":term_codes[term.split()[0]][int(term.split()[1]) - 2008] if term else ''
-            }
-        response = query_page(session, query)
-        if response:
-           return parse_page(response.text)
-        else:
-            log("No response")
-            return []
-    except requests.exceptions.ConnectionError as e:
-        log("Connection Error")
-        return []
-
-
-def query_page(session, query):
-    '''
-    Constructs and sends the POST request used to query the server.
-    Returns response.
-    '''
-    payload = {
-        'ICAction':'CLASS_SRCH_WRK2_SSR_PB_CLASS_SRCH',
-        'CLASS_SRCH_WRK2_STRM$35$':query['term'],
-        'SSR_CLSRCH_WRK_SUBJECT$0':query["course_subject"],
-        'SSR_CLSRCH_WRK_CATALOG_NBR$1':query['catalog_number'],
-        'SSR_CLSRCH_WRK_DESCR$10':query['title_keyword']
-        }
-    #log('Getting search page')
-    response = session.post(search_page, data=payload)
-    response = session.post(search_page, data={'ICAction':'#ICSave'})
-    return response
-
-
-def parse_page(page):
-    '''
-    Parses raw XML response page.
-    Returns list of classes if the page is parsable.
-    Otherwise returns empty list.
-    Each element in the list is formatted as
-    [Term, Status, Name, Title, Catalog #, Times, Room, Instructor, Dates, Enrl Cap, Enrl Cap]
-    '''
-    # uncomment to write every incoming page to a random file in temp/
-    #write_page('temp/' + str(uuid.uuid4())[:5] + '.html', page)
-    #log('Parsing page')
-    if "The search returns no results that match the criteria specified." in page:
-        log('No search results match criteria')
-        return []
-
-    soup = bs(page, 'lxml')
-    term = soup.find_all('span', {'id':'DERIVED_CLSRCH_SSS_PAGE_KEYDESCR'})[0].text.split(' | ')[1]
-    tables = soup.find_all('table',{'dir':'ltr', "class":"PSLEVEL1GRID"})
-    if not tables:
-        tables = soup.find_all('table',{'role':'presentation', 'class':"PSLEVEL1SCROLLAREABODY"})
-        log('So few search results currently unsupported')
-        return []         #no support for fewer than 20 results currently
-
-    table = tables[0]
-    contents = table.find_all('tr')
-
-    return [[term] + parse_item(contents[i]) for i in range(1, len(contents))]
-
-
-def parse_item(item):
-    '''
-    Parses individual table items which come in formatted as:
-    [Name - Title, Catalog_number, Session, Days & Times, Room(Capacity),
-                Instructor, Dates, Enrollment Cap, Enrolled, Fee, Select Class]
-    They are returned as
-    [Status, Name, Title, Catalog #, Times, Room, Instructor, Dates, Enrl Cap, Enrl Cap]
-    '''
-    cls = []
-    if item:
-        elements = [x.text for x in item('span')]
-        name = re.sub('[^a-zA-Z0-9- \.]', '', elements[0]).split(' - ')
-        number = elements[1][elements[1].find("(")+1:elements[1].find(")")]
-        cls.append(item('img')[0]['alt'])  # Status
-        cls.append(name[0])                # name
-        cls.append(name[1])                # title
-        cls.append(number)                 # catalog number
-        cls = cls + elements[3:9]          # times, room, instructor, dates, cap, enrolled
-    return cls
-
-
-def output(classes, display_dict):
-    '''Writes classes in a pretty box given a list of classes and the display dict'''
-    if verbose >= 1 :
-        display_array = [x[1] for x in display_dict]
-        width =  sum(display_array) + 3*len([x for x in display_array if x]) - 1
-        if classes:
-            print('-'*width)
-            open_classes = [x for x in classes if x[1] == "Open"]
-            format_line([x[0] for x in display_dict], display_array)
-            print('-'*width)
-            try:
-                for line in classes:
-                    format_line(line, display_array)
-            except Exception as e:
-                log(str(e))
-                log("Error in error print")
-
-            print('-'*width)
-            print("Total Results: " + str(len(classes)))
-            print("Total Closed: " + str(len(classes) - len(open_classes)))
-            print("Total Open: " + str(len(open_classes)))
-            print('-'*width)
-
-
-def format_line(line, display_array):
-    '''Prints and formats a single line for output'''
-    for i in range(len(line)):
-        if display_array[i] != 0:
-           if display_array[i] < len(line[i]):
-               print(line[i][0:display_array[i]], end=' | ')
-           else:
-               print(line[i].ljust(display_array[i]), end=' | ')
-    print()
-
-
-def write_page(file_path, response):
-    '''Write raw text response to file at file_path'''
-    log("Writing page to " + file_path)
-    with open(file_path, 'w') as file:
-        file.write(response)
-
-
-def write_csv(file_path, classes):
-    '''Write class list classes to csv file at file_path'''
-    log("Writing classes to " + file_path)
-    with open(file_path, 'w') as f:
-        writer = csv.writer(f)
-        writer.writerows(classes)
-
-
-def read_csv(file_path):
-    class_list = []
-    with open(file_path) as file:
-        reader = csv.reader(file)
-        for row in reader:
-            for element in row:
-                if element.startswith(u'\ufeff'):
-                    element = element[1:]
-                    if element:
-                        for e in element.split('\t'):
-                            if e:
-                                class_list.append(e)
-    return class_list
-
 
 def check_classes(session, auth, class_list, term=[""], keyword=""):
     '''
@@ -232,23 +24,23 @@ def check_classes(session, auth, class_list, term=[""], keyword=""):
     available_classes = []
     try:
         for c in criteria:
-            classes = search_classes(session, auth, course_subject=c[0], term=c[1],title_keyword=keyword)
+            classes = net.search_classes(session, auth, course_subject=c[0], term=c[1],title_keyword=keyword)
             if not classes:
-                log('No results')
+                io.log('No results')
             else:
                 for cls in classes:
                     if cls[2] in class_list or cls[2][:4] in class_list:
-                        #log('Available class: ' + cls[2])
+                        #io.log('Available class: ' + cls[2])
                         available_classes.append(cls)
 
         not_found = [cls for cls in class_list if cls not in [x[2] for x in available_classes] and len(cls) != 4]
         if not_found:
-            log("Classes not found")
+            io.log("Classes not found")
         for cls in not_found:
             print(cls)
 
     except Exception as e:
-        log(str(e))
+        io.log(str(e))
         return []
     return available_classes
 
@@ -269,15 +61,15 @@ def monitor_classes(session, auth, class_list):
                         working_classes[cls[7]] = cls
                         new_classes.append(cls)
                 if(new_classes):
-                    output(new_classes, display_dict)
-                log("New Classes: " + str(len(new_classes)))
-                log("Old Classes: " + str(len(working_classes) - len(new_classes)))
+                    io.output(new_classes, display_dict)
+                io.log("New Classes: " + str(len(new_classes)))
+                io.log("Old Classes: " + str(len(working_classes) - len(new_classes)))
 
-                #output([x for x in working_classes.values()], display_dict)
+                #io.output([x for x in working_classes.values()], display_dict)
                 time.sleep(seconds_between_requests)
     except KeyboardInterrupt:
         print()
-        log("Exit")
+        io.log("Exit")
 
 
 def main():
@@ -292,14 +84,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("classes", help="the classes to search for", nargs="*")
     parser.add_argument("-a", "--auth", help="username:password", action="store")
-    parser.add_argument("-v","--verbose",help="modify output verbosity",type=int,choices=[0,1,2],default=2)
+    # parser.add_argument("-v","--verbose",help="modify output verbosity",type=int,choices=[0,1,2],default=2)
     parser.add_argument("-o", "--output", help="an output csv file", action="store",default=" ", nargs="?")
     parser.add_argument("-i", "--input", help="an input csv file", action="store", default=" ",nargs="?")
     parser.add_argument("-t", "--terms",help="the specified terms", nargs="+",default=[''])
 
     results = parser.parse_args()
-    global verbose
-    verbose = results.verbose
+    # global verbose
+    # verbose = results.verbose
     if results.classes:
         class_list = [cls.upper() if len(cls) == 4 else cls[:4].upper() + " " + cls[4:] for cls in results.classes]
     term_list = [term.title()[:len(term)-4] + (" " if term else "") + term[len(term)-4:] for term in results.terms]
@@ -315,14 +107,14 @@ def main():
     if not class_list:
         parser.print_help()
 
-    session = requests.session()
+    session = net.get_session()
     classes = check_classes(session, authentication, class_list, term=term_list)
 
     if output_file:
-        write_csv(output_file, classes)
+        io.write_csv(output_file, classes)
 
 
-    output(classes, display_dict)
+    io.output(classes, display_dict)
 
 
 if __name__ == '__main__':
