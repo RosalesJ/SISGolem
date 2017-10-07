@@ -72,7 +72,7 @@ def monitor_classes(session, auth, class_list):
         io.log("Exit")
 
 
-def main():
+def parseArgs():
     class_list = []
 
     root = et.parse(settings_page).getroot()
@@ -106,14 +106,15 @@ def main():
 
     if not class_list:
         parser.print_help()
+    return (class_list, term_list, authentication, input_file, output_file, display_dict)
 
+def main():
+    class_list, term_list, authentication, input_file, output_file, display_dict = parseArgs()
     session = net.get_session()
     classes = check_classes(session, authentication, class_list, term=term_list)
 
     if output_file:
         io.write_csv(output_file, classes)
-
-
     io.output(classes, display_dict)
 
 

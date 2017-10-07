@@ -35,6 +35,7 @@ def read_csv(file_path):
                                 class_list.append(e)
     return class_list
 
+
 def output(classes, display_dict):
     '''Writes classes in a pretty box given a list of classes and the display dict'''
     # if verbose >= 1 :
